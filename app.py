@@ -9,7 +9,7 @@ import json
 import hashlib
 
 # ===== CONFIG =====
-openai.api_key = "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"
+openai.api_key = "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"
 
 USER_EMAIL = "bilal52taroon@gmail.com"
 USER_PASSWORD = "bilal_secure_123"
