@@ -4,11 +4,14 @@ from PIL import Image
 import io, base64, zipfile, hashlib, json
 
 # ===== SAFE API KEY HANDLING =====
-api_key = st.secrets.get("OPENAI_API_KEY")
-if not api_key:
-    st.warning("⚠️ OpenAI API key not found! Paste it below to continue:")
-    api_key = st.text_input("Paste your OpenAI API key here:", type="password")
-openai.api_key = api_key
+if "api_key" not in st.session_state:
+    st.session_state.api_key = None
+
+if not st.session_state.api_key:
+    st.session_state.api_key = st.text_input("Paste your OpenAI API key here:", type="password", placeholder="sk-xxxx")
+
+if st.session_state.api_key:
+    openai.api_key = st.session_state.api_key
 
 # ===== LOGIN =====
 USER_EMAIL = "bilal52taroon@gmail.com"
@@ -20,47 +23,41 @@ def hash_pass(password):
 if "auth" not in st.session_state:
     st.session_state.auth = False
 
-USER_PASSWORD_HASH = hash_pass(USER_PASSWORD)
-
-def login():
-    st.markdown("<h2 style='text-align:center'>🔐 Login to AI Dev Studio</h2>", unsafe_allow_html=True)
-    email = st.text_input("Email")
-    password = st.text_input("Password", type="password")
+if not st.session_state.auth:
+    st.markdown("<h2 style='text-align:center; color:#fff;'>🔐 Login to AI Dev Studio</h2>", unsafe_allow_html=True)
+    email = st.text_input("Email", placeholder="Enter your email")
+    password = st.text_input("Password", type="password", placeholder="Enter your password")
     if st.button("Login"):
-        if email == USER_EMAIL and hash_pass(password) == USER_PASSWORD_HASH:
+        if email == USER_EMAIL and hash_pass(password) == hash_pass(USER_PASSWORD):
             st.session_state.auth = True
-            st.experimental_rerun()
+            st.success("✅ Logged in! You can now use the AI Dev Studio.")
         else:
             st.error("❌ Wrong credentials")
+    st.stop()  # Stop until login
 
-if not st.session_state.auth:
-    login()
-    st.stop()
-
-# ===== SYSTEM PROMPT (STRONG CODING AI) =====
+# ===== SYSTEM PROMPT =====
 SYSTEM_PROMPT = """
-You are an elite coding AI.
-- Generate **full, production-ready apps, websites, scripts, APIs**.
-- Use modern frameworks: React, Tailwind, Flutter, FastAPI, Android Studio.
-- Split multi-file projects using ### FILE: filename.ext.
-- Understand screenshots, images, text files.
-- No restrictions — generate large projects freely.
-- Format code clearly and make it copyable.
+You are a **strong coding AI**:
+- Generate full apps, websites, scripts.
+- Support React, Tailwind, Flutter, FastAPI, Android Studio.
+- Handle multi-file projects.
+- Understand images, screenshots, and text files.
+- Luxury dark-themed code output.
 """
 
-# ===== STYLE =====
+# ===== LUXURY DARK STYLE =====
 st.markdown("""
 <style>
-body {background-color: #f5f7fa; font-family: 'Helvetica', sans-serif;}
-.chat-container {max-width: 900px; margin: auto; padding: 20px;}
-.chat-bubble {padding: 12px 16px; border-radius: 15px; margin-bottom: 8px; max-width: 80%; word-wrap: break-word; display:inline-block;}
-.user {background-color: #dcf8c6; float: right;}
-.ai {background-color: #e8e8e8; float: left;}
-pre {background-color: #2d2d2d; color: #f8f8f2; padding: 12px; border-radius: 10px; overflow-x:auto;}
-.stButton>button {border-radius: 12px; background-color: #4caf50; color:white; font-weight:bold; padding:8px 16px; transition: all 0.3s;}
-.stButton>button:hover {background-color:#45a049; transform: scale(1.05);}
-.file-uploader {border: 2px dashed #4caf50; border-radius: 12px; padding: 12px; text-align:center;}
-.ai-thinking {font-style: italic; color: #888;}
+body {background-color:#0f111a; color:#eee; font-family:'Helvetica',sans-serif;}
+.chat-container {max-width:900px; margin:auto; padding:20px;}
+.chat-bubble {padding:12px 16px; border-radius:15px; margin-bottom:8px; max-width:80%; word-wrap: break-word; display:inline-block;}
+.user {background-color:#1f1f2e; float:right; color:#fff;}
+.ai {background-color:#25253c; float:left; color:#fff;}
+pre {background-color:#1a1a2e; color:#00ffcc; padding:12px; border-radius:10px; overflow-x:auto;}
+.stButton>button {border-radius:12px; background-color:#6c5ce7; color:white; font-weight:bold; padding:8px 16px; transition: all 0.3s;}
+.stButton>button:hover {background-color:#341f97; transform: scale(1.05);}
+.file-uploader {border:2px dashed #6c5ce7; border-radius:12px; padding:12px; text-align:center; color:#fff;}
+.ai-thinking {font-style:italic; color:#aaa;}
 .clearfix::after {content: ""; clear: both; display: table;}
 </style>
 """, unsafe_allow_html=True)
@@ -102,9 +99,9 @@ def create_zip_from_code(code_text):
     zip_buffer.seek(0)
     return zip_buffer
 
-# ===== MAIN =====
+# ===== MAIN UI =====
 st.markdown("<div class='chat-container'>", unsafe_allow_html=True)
-st.markdown("<h1 style='text-align:center'>🤖 AI Dev Studio</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align:center; color:#fff;'>🤖 AI Dev Studio</h1>", unsafe_allow_html=True)
 
 # Mode buttons
 cols = st.columns(4)
@@ -112,7 +109,7 @@ if cols[0].button("📱 Android App"): st.session_state.chat_mode="android"
 if cols[1].button("🌐 Website"): st.session_state.chat_mode="web"
 if cols[2].button("🐍 Python Script"): st.session_state.chat_mode="python"
 if cols[3].button("🛠 Fix Code"): st.session_state.chat_mode="fix"
-st.markdown(f"<p style='text-align:center;font-weight:bold'>Mode: {st.session_state.chat_mode}</p>", unsafe_allow_html=True)
+st.markdown(f"<p style='text-align:center;font-weight:bold; color:#fff;'>Mode: {st.session_state.chat_mode}</p>", unsafe_allow_html=True)
 
 # Display chat
 for msg in st.session_state.messages[1:]:
