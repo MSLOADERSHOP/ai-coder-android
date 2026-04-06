@@ -1,36 +1,34 @@
-# app.py
 import streamlit as st
 import openai
 from PIL import Image
-import base64
 import io
+import base64
 import zipfile
-import json
 import hashlib
+import json
 
 # ===== CONFIG =====
-openai.api_key = "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"
+openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 USER_EMAIL = "bilal52taroon@gmail.com"
 USER_PASSWORD = "bilal_secure_123"
 
 SYSTEM_PROMPT = """
 You are an elite developer AI.
-
-- Only generate full working code for apps, websites, scripts, APIs.
-- Use modern frameworks (React, Tailwind, FastAPI, Android Studio, Flutter).
-- Always split code into multiple files if needed, with ### FILE: filename.ext
-- Understand images/screenshots if provided.
-- Prioritize practical production-ready solutions.
-- No restrictions — generate large projects, multiple files freely.
-- Use proper formatting and code blocks.
+- Generate full apps, websites, scripts.
+- Use modern frameworks: React, Tailwind, FastAPI, Flutter.
+- Understand images/screenshots.
+- Always split into multiple files with ### FILE: filename.ext
+- Large projects allowed, no restriction.
+- Output code blocks clearly.
 """
-
-st.set_page_config(page_title="AI Dev Studio", layout="wide")
 
 # ===== LOGIN =====
 def hash_pass(password):
     return hashlib.sha256(password.encode()).hexdigest()
+
+if "auth" not in st.session_state:
+    st.session_state.auth = False
 
 USER_PASSWORD_HASH = hash_pass(USER_PASSWORD)
 
@@ -41,12 +39,9 @@ def login():
     if st.button("Login"):
         if email == USER_EMAIL and hash_pass(password) == USER_PASSWORD_HASH:
             st.session_state.auth = True
-            st.rerun()
+            st.experimental_rerun()
         else:
             st.error("❌ Wrong credentials")
-
-if "auth" not in st.session_state:
-    st.session_state.auth = False
 
 if not st.session_state.auth:
     login()
@@ -55,52 +50,28 @@ if not st.session_state.auth:
 # ===== STYLE =====
 st.markdown("""
 <style>
-body {
-    background-color: #f9f9f9;
-    font-family: 'Helvetica', sans-serif;
-}
-.stButton button {
-    border-radius: 8px !important;
-    background-color: #4caf50 !important;
-    color: white !important;
-    font-weight: bold;
-}
-.stFileUploader>div>div {
-    border: 2px dashed #4caf50;
-    border-radius: 10px;
-    padding: 10px;
-}
-.chat-bubble {
-    padding: 12px 16px;
-    border-radius: 15px;
-    margin-bottom: 8px;
-    max-width: 90%;
-    word-wrap: break-word;
-}
-.user {background-color: #dcf8c6; margin-left: auto;}
-.ai {background-color: #e8e8e8; margin-right: auto;}
-pre {
-    background-color: #272822;
-    color: #f8f8f2;
-    padding: 10px;
-    border-radius: 10px;
-    overflow-x: auto;
-}
+body {background-color: #f5f7fa; font-family: 'Helvetica', sans-serif;}
+.chat-container {max-width: 900px; margin: auto; padding: 20px;}
+.chat-bubble {padding: 12px 16px; border-radius: 15px; margin-bottom: 8px; max-width: 80%; word-wrap: break-word; display:inline-block;}
+.user {background-color: #dcf8c6; float: right;}
+.ai {background-color: #e8e8e8; float: left;}
+pre {background-color: #2d2d2d; color: #f8f8f2; padding: 12px; border-radius: 10px; overflow-x:auto;}
+.stButton>button {border-radius: 12px; background-color: #4caf50; color:white; font-weight:bold; padding:8px 16px; transition: all 0.3s;}
+.stButton>button:hover {background-color:#45a049; transform: scale(1.05);}
+.file-uploader {border: 2px dashed #4caf50; border-radius: 12px; padding: 12px; text-align:center;}
+.ai-thinking {font-style: italic; color: #888;}
+.clearfix::after {content: ""; clear: both; display: table;}
 </style>
 """, unsafe_allow_html=True)
 
 # ===== SIDEBAR =====
 with st.sidebar:
     st.title("⚙️ Dev Tools")
-    uploaded_files = st.file_uploader(
-        "Upload files/images (optional)",
-        accept_multiple_files=True,
-        type=["png","jpg","txt","pdf"]
-    )
+    uploaded_files = st.file_uploader("Upload files/images", accept_multiple_files=True, type=["png","jpg","txt","pdf"])
     st.markdown("💡 Quick Actions")
     if st.button("🗑 Clear Chat"):
         st.session_state.messages = []
-        st.rerun()
+        st.experimental_rerun()
     if st.button("💾 Save Chat"):
         with open("chat_history.json","w") as f:
             json.dump(st.session_state.messages,f)
@@ -120,10 +91,10 @@ def create_zip_from_code(code_text):
     lines = code_text.split("\n")
     for line in lines:
         if line.startswith("### FILE:"):
-            current_file = line.replace("### FILE:", "").strip()
+            current_file = line.replace("### FILE:","").strip()
             files[current_file] = ""
         else:
-            files.setdefault(current_file, "")
+            files.setdefault(current_file,"")
             files[current_file] += line + "\n"
     with zipfile.ZipFile(zip_buffer,"w") as zip_file:
         for filename, content in files.items():
@@ -132,6 +103,7 @@ def create_zip_from_code(code_text):
     return zip_buffer
 
 # ===== MAIN =====
+st.markdown("<div class='chat-container'>", unsafe_allow_html=True)
 st.markdown("<h1 style='text-align:center'>🤖 AI Dev Studio</h1>", unsafe_allow_html=True)
 
 # Mode buttons
@@ -140,24 +112,22 @@ if cols[0].button("📱 Android App"): st.session_state.chat_mode="android"
 if cols[1].button("🌐 Website"): st.session_state.chat_mode="web"
 if cols[2].button("🐍 Python Script"): st.session_state.chat_mode="python"
 if cols[3].button("🛠 Fix Code"): st.session_state.chat_mode="fix"
-
-mode_text = st.session_state.chat_mode
-st.markdown(f"<p style='text-align:center;font-weight:bold'>Mode: {mode_text}</p>", unsafe_allow_html=True)
+st.markdown(f"<p style='text-align:center;font-weight:bold'>Mode: {st.session_state.chat_mode}</p>", unsafe_allow_html=True)
 
 # Display chat
 for msg in st.session_state.messages[1:]:
     role_class = "user" if msg["role"]=="user" else "ai"
-    st.markdown(f"<div class='chat-bubble {role_class}'>{msg['content'].replace(chr(10),'<br>')}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='chat-bubble {role_class} clearfix'>{msg['content'].replace(chr(10),'<br>')}</div>", unsafe_allow_html=True)
 
 # Chat input
-prompt = st.chat_input(f"Enter prompt ({mode_text})")
+prompt = st.chat_input(f"Enter prompt ({st.session_state.chat_mode})")
 
 if prompt:
-    full_prompt = f"[Mode: {mode_text}] {prompt}"
+    full_prompt = f"[Mode: {st.session_state.chat_mode}] {prompt}"
     st.session_state.messages.append({"role":"user","content":full_prompt})
-    st.experimental_rerun() if not uploaded_files else None  # refresh for file handling
+    st.markdown("<div class='ai-thinking'>AI is thinking...</div>", unsafe_allow_html=True)
 
-    # Generate AI response
+    # Prepare content
     content = [{"type":"text","text":full_prompt}]
     if uploaded_files:
         for file in uploaded_files:
@@ -168,6 +138,7 @@ if prompt:
                 text = file.read().decode(errors="ignore")
                 content.append({"type":"text","text":f"\nFILE:\n{text}"})
 
+    # Call OpenAI
     try:
         response = openai.chat.completions.create(
             model="gpt-4o",
@@ -184,7 +155,7 @@ if prompt:
     st.session_state.messages.append({"role":"assistant","content":reply})
     st.experimental_rerun()
 
-# Download code as ZIP
+# Download last AI project
 if st.session_state.messages and st.session_state.messages[-1]["role"]=="assistant":
     last_reply = st.session_state.messages[-1]["content"]
     st.download_button(
@@ -193,3 +164,5 @@ if st.session_state.messages and st.session_state.messages[-1]["role"]=="assista
         file_name="ai_project.zip",
         mime="application/zip"
     )
+
+st.markdown("</div>", unsafe_allow_html=True)
