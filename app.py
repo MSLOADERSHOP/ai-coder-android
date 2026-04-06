@@ -1,69 +1,139 @@
 import streamlit as st
 import openai
-from PIL import Image
-import io
 import base64
-from datetime import datetime
+import json
 
-st.set_page_config(page_title="🤖 AI Coder Pro", layout="wide")
-openai.api_key = st.secrets.get("OPENAI_API_KEY", "")
+# ========= CONFIG =========
+openai.api_key = st.secrets.get("OPENAI_API_KEY")
 
+USER_EMAIL = "bilal52taroon@gmail.com"
+USER_PASSWORD = "bilal_secure_123"
+
+SYSTEM_PROMPT = """
+You are an elite senior developer.
+
+- Always generate FULL working code
+- Focus on Android, web apps, APIs
+- Use modern UI (React, Tailwind, Material UI)
+- Understand images deeply if provided
+- Output production-ready code
+- Include file structure when needed
+- Be direct, smart, and developer-focused
+"""
+
+st.set_page_config(page_title="AI Dev Pro", layout="wide")
+
+# ========= LOGIN =========
+def login():
+    st.title("🔐 Login")
+
+    email = st.text_input("Email")
+    password = st.text_input("Password", type="password")
+
+    if st.button("Login"):
+        if email == USER_EMAIL and password == USER_PASSWORD:
+            st.session_state.auth = True
+            st.rerun()
+        else:
+            st.error("Wrong credentials")
+
+if "auth" not in st.session_state:
+    st.session_state.auth = False
+
+if not st.session_state.auth:
+    login()
+    st.stop()
+
+# ========= UI STYLE =========
 st.markdown("""
 <style>
-.pro-title {font-size:3rem;color:#ff6b6b;text-align:center;}
-.code-box {background:#1e1e1e;color:#f8f8f2;padding:1.5rem;border-radius:10px;font-family:monospace;height:500px;overflow:auto;}
+.stChatMessage {
+    border-radius: 15px;
+    padding: 10px;
+}
+.stButton button {
+    border-radius: 10px;
+    background-color: #4CAF50;
+    color: white;
+}
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<h1 class="pro-title">🤖 AI Code Generator PRO</h1>', unsafe_allow_html=True)
-st.info("📱 Upload **screenshot/photo/file** → Get **complete code instantly**!")
+# ========= SIDEBAR =========
+with st.sidebar:
+    st.title("⚙️ Dev Tools")
 
-col1, col2 = st.columns([3,1])
+    uploaded_files = st.file_uploader(
+        "Upload files/images",
+        accept_multiple_files=True,
+        type=["png", "jpg", "txt", "pdf"]
+    )
 
-with col1:
-    uploaded = st.file_uploader("📁 Upload Image/File", type=['png','jpg','jpeg','txt','pdf','py','js'])
-    idea = st.text_area("💡 Your idea:", height=120, 
-        placeholder="React app from screenshot, Discord bot, FastAPI from PDF spec...")
+    if st.button("🗑 Clear Chat"):
+        st.session_state.messages = []
+        st.rerun()
 
-with col2:
-    st.markdown("### 🚀 Examples")
-    st.markdown("""
-    - 📱 **App screenshot** → React Native
-    - 🎨 **Figma** → HTML/Tailwind
-    - 📄 **API spec** → Backend
-    - 💡 **"ecommerce site"** → Fullstack
-    """)
+    if st.button("💾 Save Chat"):
+        with open("chat_history.json", "w") as f:
+            json.dump(st.session_state.messages, f)
+        st.success("Saved!")
 
-if st.button("🎯 GENERATE FULL CODE", use_container_width=True) and idea:
-    with st.spinner("🤖 AI building your app..."):
-        messages = [{"role": "user", "content": f"Create COMPLETE production code for: {idea}"}]
-        
-        if uploaded:
-            if 'image' in uploaded.type:
-                img = Image.open(uploaded)
-                st.image(img, caption="🎨 Vision Analysis", width=300)
-                b64 = base64.b64encode(uploaded.read()).decode()
-                messages[0]["content"] = [{"type": "text", "text": f"Exact code for this design: {idea}"},
-                                         {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}]
-            else:
-                content = uploaded.read().decode('utf-8', errors='ignore')
-                messages[0]["content"] += f"\n\nFile {uploaded.name}:\n{content}"
-        
-        response = openai.chat.completions.create(
-            model="gpt-4o",
-            messages=messages,
-            max_tokens=6000
-        )
-        
-        code = response.choices[0].message.content
-        st.markdown('<div class="code-box">' + code.replace('```', '') + '</div>', unsafe_allow_html=True)
-        
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
-        st.download_button(f"💾 Download Project {timestamp}", 
-                          code, 
-                          f"ai-project-{timestamp.replace(':','-')}.md")
-        
-        st.success(f"✅ Project saved! {timestamp}")
+# ========= CHAT MEMORY =========
+if "messages" not in st.session_state:
+    st.session_state.messages = [
+        {"role": "system", "content": SYSTEM_PROMPT}
+    ]
 
-st.markdown("---")
-st.caption("🚀 MSLOADERSHOP AI Coder Pro | Made for Android")
+# ========= MAIN =========
+st.title("🤖 AI Developer Pro")
+
+# Show messages
+for msg in st.session_state.messages[1:]:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
+
+# Input
+prompt = st.chat_input("Build apps, fix code, generate anything...")
+
+if prompt:
+    st.session_state.messages.append({"role": "user", "content": prompt})
+
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    with st.chat_message("assistant"):
+        with st.spinner("Building..."):
+
+            content = [{"type": "text", "text": prompt}]
+
+            # Handle uploads
+            if uploaded_files:
+                for file in uploaded_files:
+                    if file.type.startswith("image/"):
+                        encoded = base64.b64encode(file.read()).decode()
+                        content.append({
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/png;base64,{encoded}"
+                            }
+                        })
+                    else:
+                        text = file.read().decode(errors="ignore")
+                        content.append({
+                            "type": "text",
+                            "text": f"\nFILE:\n{text}"
+                        })
+
+            response = openai.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": content}
+                ],
+                max_tokens=4000
+            )
+
+            reply = response.choices[0].message.content
+            st.markdown(reply)
+
+    st.session_state.messages.append({"role": "assistant", "content": reply})
