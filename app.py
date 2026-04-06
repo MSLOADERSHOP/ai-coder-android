@@ -1,29 +1,19 @@
 import streamlit as st
 import openai
 from PIL import Image
-import io
-import base64
-import zipfile
-import hashlib
-import json
+import io, base64, zipfile, hashlib, json
 
-# ===== CONFIG =====
-openai.api_key = st.secrets["OPENAI_API_KEY"]
+# ===== SAFE API KEY HANDLING =====
+api_key = st.secrets.get("OPENAI_API_KEY")
+if not api_key:
+    st.warning("⚠️ OpenAI API key not found! Paste it below to continue:")
+    api_key = st.text_input("Paste your OpenAI API key here:", type="password")
+openai.api_key = api_key
 
+# ===== LOGIN =====
 USER_EMAIL = "bilal52taroon@gmail.com"
 USER_PASSWORD = "bilal_secure_123"
 
-SYSTEM_PROMPT = """
-You are an elite developer AI.
-- Generate full apps, websites, scripts.
-- Use modern frameworks: React, Tailwind, FastAPI, Flutter.
-- Understand images/screenshots.
-- Always split into multiple files with ### FILE: filename.ext
-- Large projects allowed, no restriction.
-- Output code blocks clearly.
-"""
-
-# ===== LOGIN =====
 def hash_pass(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
@@ -46,6 +36,17 @@ def login():
 if not st.session_state.auth:
     login()
     st.stop()
+
+# ===== SYSTEM PROMPT (STRONG CODING AI) =====
+SYSTEM_PROMPT = """
+You are an elite coding AI.
+- Generate **full, production-ready apps, websites, scripts, APIs**.
+- Use modern frameworks: React, Tailwind, Flutter, FastAPI, Android Studio.
+- Split multi-file projects using ### FILE: filename.ext.
+- Understand screenshots, images, text files.
+- No restrictions — generate large projects freely.
+- Format code clearly and make it copyable.
+"""
 
 # ===== STYLE =====
 st.markdown("""
@@ -88,8 +89,7 @@ def create_zip_from_code(code_text):
     zip_buffer = io.BytesIO()
     files = {}
     current_file = "main.txt"
-    lines = code_text.split("\n")
-    for line in lines:
+    for line in code_text.split("\n"):
         if line.startswith("### FILE:"):
             current_file = line.replace("### FILE:","").strip()
             files[current_file] = ""
