@@ -9,7 +9,6 @@ import hashlib
 
 # ===== CONFIG =====
 openai.api_key = st.secrets.get("OPENAI_API_KEY")
-
 USER_EMAIL = "bilal52taroon@gmail.com"
 USER_PASSWORD = "bilal_secure_123"
 
@@ -21,7 +20,8 @@ You are an elite developer AI.
 - Always split code into multiple files if needed, with ### FILE: filename.ext
 - Understand images/screenshots if provided.
 - Prioritize practical production-ready solutions.
-- Do not add restrictions — generate freely.
+- No restrictions — generate large projects, multiple files freely.
+- Use proper formatting and code blocks.
 """
 
 st.set_page_config(page_title="AI Dev Studio", layout="wide")
@@ -62,6 +62,12 @@ st.markdown("""
     background-color: #4CAF50;
     color: white;
 }
+pre {
+    background-color: #f0f0f0;
+    padding: 10px;
+    border-radius: 10px;
+    overflow-x: auto;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -73,7 +79,7 @@ with st.sidebar:
         accept_multiple_files=True,
         type=["png","jpg","txt","pdf"]
     )
-    st.markdown("💡 Buttons for quick tasks")
+    st.markdown("💡 Quick Actions")
     if st.button("🗑 Clear Chat"):
         st.session_state.messages = []
         st.rerun()
@@ -85,8 +91,10 @@ with st.sidebar:
 # ===== CHAT MEMORY =====
 if "messages" not in st.session_state:
     st.session_state.messages = [{"role":"system","content":SYSTEM_PROMPT}]
+if "chat_mode" not in st.session_state:
+    st.session_state.chat_mode = "general"
 
-# ===== HELPER =====
+# ===== ZIP HELPER =====
 def create_zip_from_code(code_text):
     zip_buffer = io.BytesIO()
     files = {}
@@ -108,29 +116,25 @@ def create_zip_from_code(code_text):
 # ===== MAIN =====
 st.title("🤖 AI Dev Studio")
 
-# Chat buttons (quick modes)
+# Quick mode buttons
 cols = st.columns(4)
-if cols[0].button("📱 Android App"):
-    st.session_state.chat_mode = "android"
-if cols[1].button("🌐 Website"):
-    st.session_state.chat_mode = "web"
-if cols[2].button("🐍 Python Script"):
-    st.session_state.chat_mode = "python"
-if cols[3].button("🛠 Fix Code"):
-    st.session_state.chat_mode = "fix"
+if cols[0].button("📱 Android App"): st.session_state.chat_mode="android"
+if cols[1].button("🌐 Website"): st.session_state.chat_mode="web"
+if cols[2].button("🐍 Python Script"): st.session_state.chat_mode="python"
+if cols[3].button("🛠 Fix Code"): st.session_state.chat_mode="fix"
 
-chat_mode_text = st.session_state.get("chat_mode","general")
+mode_text = st.session_state.chat_mode
 
-# Display chat history
+# Display chat
 for msg in st.session_state.messages[1:]:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
 # Chat input
-prompt = st.chat_input(f"Your prompt ({chat_mode_text})")
+prompt = st.chat_input(f"Enter prompt ({mode_text})")
 
 if prompt:
-    full_prompt = f"[Mode: {chat_mode_text}] {prompt}"
+    full_prompt = f"[Mode: {mode_text}] {prompt}"
     st.session_state.messages.append({"role":"user","content":full_prompt})
     with st.chat_message("user"):
         st.markdown(full_prompt)
@@ -163,11 +167,10 @@ if prompt:
             st.markdown(reply)
             st.session_state.messages.append({"role":"assistant","content":reply})
 
-            # Download as ZIP
-            zip_file = create_zip_from_code(reply)
+            # Copy code button
             st.download_button(
-                label="📦 Download Project ZIP",
-                data=zip_file,
+                label="📥 Download Project ZIP",
+                data=create_zip_from_code(reply),
                 file_name="ai_project.zip",
                 mime="application/zip"
-    )
+)
