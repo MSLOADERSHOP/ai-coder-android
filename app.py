@@ -8,7 +8,11 @@ if "api_key" not in st.session_state:
     st.session_state.api_key = None
 
 if not st.session_state.api_key:
-    st.session_state.api_key = st.text_input("Paste your OpenAI API key here:", type="password", placeholder="sk-xxxx")
+    st.session_state.api_key = st.text_input(
+        "Paste your OpenAI API key here:", 
+        type="password", 
+        placeholder="sk-xxxx"
+    )
 
 if st.session_state.api_key:
     openai.api_key = st.session_state.api_key
@@ -31,17 +35,18 @@ if not st.session_state.auth:
         if email == USER_EMAIL and hash_pass(password) == hash_pass(USER_PASSWORD):
             st.session_state.auth = True
             st.success("✅ Logged in! You can now use the AI Dev Studio.")
+            st.experimental_rerun()
         else:
             st.error("❌ Wrong credentials")
     st.stop()  # Stop until login
 
 # ===== SYSTEM PROMPT =====
 SYSTEM_PROMPT = """
-You are a **strong coding AI**:
+You are a strong coding AI:
 - Generate full apps, websites, scripts.
 - Support React, Tailwind, Flutter, FastAPI, Android Studio.
 - Handle multi-file projects.
-- Understand images, screenshots, and text files.
+- Understand images/screenshots/text files.
 - Luxury dark-themed code output.
 """
 
@@ -69,7 +74,6 @@ with st.sidebar:
     st.markdown("💡 Quick Actions")
     if st.button("🗑 Clear Chat"):
         st.session_state.messages = []
-        st.experimental_rerun()
     if st.button("💾 Save Chat"):
         with open("chat_history.json","w") as f:
             json.dump(st.session_state.messages,f)
@@ -150,7 +154,6 @@ if prompt:
         reply = f"⚠️ Error: {e}"
 
     st.session_state.messages.append({"role":"assistant","content":reply})
-    st.experimental_rerun()
 
 # Download last AI project
 if st.session_state.messages and st.session_state.messages[-1]["role"]=="assistant":
